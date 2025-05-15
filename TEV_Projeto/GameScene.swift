@@ -17,6 +17,8 @@ class GameScene: SKScene, SKPhysicsContactDelegate {
     var moveInterval: TimeInterval = 0.2
     var lastMoveTime: TimeInterval = 0
     var food: SKShapeNode?
+    var score : Int = 0
+    let scoreLabel = SKLabelNode()
     
     var playAreaFrame: CGRect = .zero
     
@@ -32,8 +34,18 @@ class GameScene: SKScene, SKPhysicsContactDelegate {
         playAreaFrame = CGRect(x: originX, y: originY, width: side, height: side)
         
         createBorder(frame: playAreaFrame)
+        addScore()
         createSnake()
         spawnFood()
+        createDirectionButtons()
+    }
+    
+    func addScore(){
+        //score = 0
+        scoreLabel.text = "Score: \(score)"
+        scoreLabel.position = CGPoint(x: size.width / 2, y: size.height - 100)
+        scoreLabel.fontColor = .green
+        addChild(scoreLabel)
     }
     
     func createBorder(frame: CGRect) {
@@ -130,6 +142,8 @@ class GameScene: SKScene, SKPhysicsContactDelegate {
             switch secondBody.categoryBitMask {
             case Categoria.food:
                 print("Snake ate food!")
+                score += 1
+                scoreLabel.text = ("Score: \(score)")
                 spawnFood()
                 growSnake()
 
@@ -174,25 +188,81 @@ class GameScene: SKScene, SKPhysicsContactDelegate {
     override func touchesEnded(_ touches: Set<UITouch>, with event: UIEvent?) {
         guard let touch = touches.first else { return }
         let location = touch.location(in: self)
-        let head = snake.first!
+        let nodesAtPoint = nodes(at: location)
         
-        if abs(location.x - head.position.x) > abs(location.y - head.position.y) {
-            // Horizontal
-            let newDirection = location.x > head.position.x ? CGVector(dx: 20, dy: 0) : CGVector(dx: -20, dy: 0)
-            if direction.dx == 0 { direction = newDirection }
-        } else {
-            // Vertical
-            let newDirection = location.y > head.position.y ? CGVector(dx: 0, dy: 20) : CGVector(dx: 0, dy: -20)
-            if direction.dy == 0 { direction = newDirection }
+        for node in nodesAtPoint {
+            if let name = node.name {
+                switch name {
+                case "up":
+                    if direction.dy == 0 {
+                        direction = CGVector(dx: 0, dy: 20)
+                    }
+                case "down":
+                    if direction.dy == 0 {
+                        direction = CGVector(dx: 0, dy: -20)
+                    }
+                case "left":
+                    if direction.dx == 0 {
+                        direction = CGVector(dx: -20, dy: 0)
+                    }
+                case "right":
+                    if direction.dx == 0 {
+                        direction = CGVector(dx: 20, dy: 0)
+                    }
+                default:
+                    break
+                }
+            }
+        }
+    }
+    
+    func createDirectionButtons() {
+        let buttonSize = CGSize(width: 50, height: 50)
+        let padding: CGFloat = 10
+
+        let baseY = frame.minY + 100  // Distance from bottom of screen
+        let centerX = frame.midX
+
+        let left = SKShapeNode(rectOf: buttonSize)
+        left.name = "left"
+        left.fillColor = .gray
+        left.position = CGPoint(x: centerX - buttonSize.width - padding, y: baseY)
+
+        let right = SKShapeNode(rectOf: buttonSize)
+        right.name = "right"
+        right.fillColor = .gray
+        right.position = CGPoint(x: centerX + buttonSize.width + padding, y: baseY)
+
+        let up = SKShapeNode(rectOf: buttonSize)
+        up.name = "up"
+        up.fillColor = .gray
+        up.position = CGPoint(x: centerX, y: baseY + buttonSize.height + padding)
+
+        let down = SKShapeNode(rectOf: buttonSize)
+        down.name = "down"
+        down.fillColor = .gray
+        down.position = CGPoint(x: centerX, y: baseY - buttonSize.height - padding)
+
+        addChild(left)
+        addChild(right)
+        addChild(up)
+        addChild(down)
+
+        // Add labels
+        let labels = [("←", left), ("→", right), ("↑", up), ("↓", down)]
+        for (text, node) in labels {
+            let label = SKLabelNode(text: text)
+            label.fontSize = 20
+            label.fontColor = .white
+            label.verticalAlignmentMode = .center
+            label.horizontalAlignmentMode = .center
+            node.addChild(label)
         }
     }
     
     func gameOver() {
-        print("Game Over")
-        removeAllChildren()
-        snake.removeAll()
-        createBorder(frame: playAreaFrame)
-        createSnake()
-        spawnFood()
+        let gameOverScene = GameOverScene(size: self.size, score: self.score)
+        gameOverScene.scaleMode = .aspectFill
+        self.view?.presentScene(gameOverScene, transition: .flipVertical(withDuration: 1.0))
     }
 }
