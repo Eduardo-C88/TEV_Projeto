@@ -13,43 +13,46 @@ struct Categoria {
 class GameScene: SKScene, SKPhysicsContactDelegate {
     
     var snake: [SKShapeNode] = []
-    var direction = CGVector(dx: 20, dy: 0)
+    var direction = CGVector(dx: 0, dy: 0)
     var moveInterval: TimeInterval = 0.2
     var lastMoveTime: TimeInterval = 0
     var food: SKShapeNode?
-    var score : Int = 0
+    var score: Int = 0
     let scoreLabel = SKLabelNode()
     
     var playAreaFrame: CGRect = .zero
-    
+    let cellSize: CGFloat = 20
+
     override func didMove(to view: SKView) {
         backgroundColor = .black
         
         physicsWorld.gravity = .zero
         physicsWorld.contactDelegate = self
         
-        let side = min(size.width, size.height)
+        // 🔲 Square play area using full screen width, centered vertically
+        let side = floor(size.width / cellSize) * cellSize
         let originX = (size.width - side) / 2
         let originY = (size.height - side) / 2
         playAreaFrame = CGRect(x: originX, y: originY, width: side, height: side)
         
         createBorder(frame: playAreaFrame)
+        drawGrid()
         addScore()
         createSnake()
         spawnFood()
         createDirectionButtons()
     }
     
-    func addScore(){
-        //score = 0
+    func addScore() {
         scoreLabel.text = "Score: \(score)"
-        scoreLabel.position = CGPoint(x: size.width / 2, y: size.height - 100)
+        scoreLabel.position = CGPoint(x: size.width / 2, y: size.height - 60)
         scoreLabel.fontColor = .green
+        scoreLabel.fontSize = 24
         addChild(scoreLabel)
     }
     
     func createBorder(frame: CGRect) {
-        let border = SKShapeNode(rect: frame)
+        let border = SKShapeNode(rect: frame.insetBy(dx: -2, dy: -2))
         border.strokeColor = .white
         border.lineWidth = 4
         
@@ -61,41 +64,83 @@ class GameScene: SKScene, SKPhysicsContactDelegate {
         
         addChild(border)
     }
+
+    func drawGrid() {
+        let cols = Int(playAreaFrame.width / cellSize)
+        let rows = Int(playAreaFrame.height / cellSize)
+
+        for i in 0...cols {
+            let x = playAreaFrame.origin.x + CGFloat(i) * cellSize
+            let path = CGMutablePath()
+            path.move(to: CGPoint(x: x, y: playAreaFrame.origin.y))
+            path.addLine(to: CGPoint(x: x, y: playAreaFrame.maxY))
+            
+            let line = SKShapeNode(path: path)
+            line.strokeColor = .darkGray
+            line.lineWidth = 0.5
+            addChild(line)
+        }
+
+        for j in 0...rows {
+            let y = playAreaFrame.origin.y + CGFloat(j) * cellSize
+            let path = CGMutablePath()
+            path.move(to: CGPoint(x: playAreaFrame.origin.x, y: y))
+            path.addLine(to: CGPoint(x: playAreaFrame.maxX, y: y))
+            
+            let line = SKShapeNode(path: path)
+            line.strokeColor = .darkGray
+            line.lineWidth = 0.5
+            addChild(line)
+        }
+    }
+    
+    func gridPosition(column: Int, row: Int) -> CGPoint {
+        let x = CGFloat(column) * cellSize + playAreaFrame.origin.x + cellSize / 2
+        let y = CGFloat(row) * cellSize + playAreaFrame.origin.y + cellSize / 2
+        return CGPoint(x: x, y: y)
+    }
     
     func createSnake() {
-        let head = SKShapeNode(rectOf: CGSize(width: 20, height: 20))
+        let columns = Int(playAreaFrame.width / cellSize)
+        let rows = Int(playAreaFrame.height / cellSize)
+        let midColumn = columns / 2
+        let midRow = rows / 2
+
+        let aligned = gridPosition(column: midColumn, row: midRow)
+
+        let head = SKShapeNode(rectOf: CGSize(width: cellSize - 1, height: cellSize - 1))
         head.fillColor = .green
-        head.position = CGPoint(x: frame.midX, y: frame.midY)
-        
-        head.physicsBody = SKPhysicsBody(rectangleOf: CGSize(width: 15, height: 15))
+        head.position = aligned
+
+        head.physicsBody = SKPhysicsBody(rectangleOf: CGSize(width: cellSize, height: cellSize))
         head.physicsBody?.isDynamic = true
         head.physicsBody?.categoryBitMask = Categoria.snakeHead
         head.physicsBody?.contactTestBitMask = Categoria.food | Categoria.snakeBody | Categoria.border
         head.physicsBody?.collisionBitMask = Categoria.none
         head.physicsBody?.usesPreciseCollisionDetection = true
-        
+
         addChild(head)
         snake.append(head)
+
+        direction = CGVector(dx: cellSize, dy: 0) // Start moving right
     }
     
     func spawnFood() {
         food?.removeFromParent()
         
-        let cellSize: CGFloat = 20
         let columns = Int(playAreaFrame.width / cellSize)
         let rows = Int(playAreaFrame.height / cellSize)
         
         let randomColumn = Int.random(in: 0..<columns)
         let randomRow = Int.random(in: 0..<rows)
 
-        let x = CGFloat(randomColumn) * cellSize + playAreaFrame.origin.x + cellSize / 2
-        let y = CGFloat(randomRow) * cellSize + playAreaFrame.origin.y + cellSize / 2
+        let position = gridPosition(column: randomColumn, row: randomRow)
         
         let node = SKShapeNode(rectOf: CGSize(width: cellSize, height: cellSize))
         node.fillColor = .red
-        node.position = CGPoint(x: x, y: y)
+        node.position = position
         
-        node.physicsBody = SKPhysicsBody(rectangleOf: CGSize(width: 20, height: 20))
+        node.physicsBody = SKPhysicsBody(rectangleOf: CGSize(width: cellSize - 1, height: cellSize - 1))
         node.physicsBody?.isDynamic = false
         node.physicsBody?.categoryBitMask = Categoria.food
         node.physicsBody?.contactTestBitMask = Categoria.snakeHead
@@ -107,14 +152,13 @@ class GameScene: SKScene, SKPhysicsContactDelegate {
     
     func growSnake() {
         guard let last = snake.last else { return }
-        let newPart = SKShapeNode(rectOf: CGSize(width: 20, height: 20))
+        let newPart = SKShapeNode(rectOf: CGSize(width: cellSize, height: cellSize))
         newPart.fillColor = .green
         newPart.position = last.position
 
         addChild(newPart)
         snake.append(newPart)
 
-        // Delay adding physics body to avoid immediate collision
         let addPhysics = SKAction.run {
             newPart.physicsBody = SKPhysicsBody(rectangleOf: CGSize(width: 15, height: 15))
             newPart.physicsBody?.isDynamic = false
@@ -141,18 +185,12 @@ class GameScene: SKScene, SKPhysicsContactDelegate {
         if firstBody.categoryBitMask == Categoria.snakeHead {
             switch secondBody.categoryBitMask {
             case Categoria.food:
-                print("Snake ate food!")
                 score += 1
-                scoreLabel.text = ("Score: \(score)")
+                scoreLabel.text = "Score: \(score)"
                 spawnFood()
                 growSnake()
 
-            case Categoria.snakeBody:
-                print("Snake hit its body!")
-                gameOver()
-
-            case Categoria.border:
-                print("Snake hit the wall!")
+            case Categoria.snakeBody, Categoria.border:
                 gameOver()
 
             default:
@@ -171,14 +209,7 @@ class GameScene: SKScene, SKPhysicsContactDelegate {
     func moveSnake() {
         guard let head = snake.first else { return }
         let newHeadPos = CGPoint(x: head.position.x + direction.dx, y: head.position.y + direction.dy)
-        
-        let margin: CGFloat = 2
-        let minX = playAreaFrame.minX + margin
-        let maxX = playAreaFrame.maxX - 20 - margin
-        let minY = playAreaFrame.minY + margin
-        let maxY = playAreaFrame.maxY - 20 - margin
-        
-        // Move segments
+
         for i in (1..<snake.count).reversed() {
             snake[i].position = snake[i - 1].position
         }
@@ -195,19 +226,19 @@ class GameScene: SKScene, SKPhysicsContactDelegate {
                 switch name {
                 case "up":
                     if direction.dy == 0 {
-                        direction = CGVector(dx: 0, dy: 20)
+                        direction = CGVector(dx: 0, dy: cellSize)
                     }
                 case "down":
                     if direction.dy == 0 {
-                        direction = CGVector(dx: 0, dy: -20)
+                        direction = CGVector(dx: 0, dy: -cellSize)
                     }
                 case "left":
                     if direction.dx == 0 {
-                        direction = CGVector(dx: -20, dy: 0)
+                        direction = CGVector(dx: -cellSize, dy: 0)
                     }
                 case "right":
                     if direction.dx == 0 {
-                        direction = CGVector(dx: 20, dy: 0)
+                        direction = CGVector(dx: cellSize, dy: 0)
                     }
                 default:
                     break
@@ -220,7 +251,7 @@ class GameScene: SKScene, SKPhysicsContactDelegate {
         let buttonSize = CGSize(width: 50, height: 50)
         let padding: CGFloat = 10
 
-        let baseY = frame.minY + 100  // Distance from bottom of screen
+        let baseY = frame.minY + 100
         let centerX = frame.midX
 
         let left = SKShapeNode(rectOf: buttonSize)
@@ -248,7 +279,6 @@ class GameScene: SKScene, SKPhysicsContactDelegate {
         addChild(up)
         addChild(down)
 
-        // Add labels
         let labels = [("←", left), ("→", right), ("↑", up), ("↓", down)]
         for (text, node) in labels {
             let label = SKLabelNode(text: text)
@@ -259,10 +289,11 @@ class GameScene: SKScene, SKPhysicsContactDelegate {
             node.addChild(label)
         }
     }
-    
+
     func gameOver() {
         let gameOverScene = GameOverScene(size: self.size, score: self.score)
         gameOverScene.scaleMode = .aspectFill
         self.view?.presentScene(gameOverScene, transition: .flipVertical(withDuration: 1.0))
     }
 }
+
