@@ -8,7 +8,53 @@ struct Categoria {
     static let food: UInt32 = 0b10
     static let snakeBody: UInt32 = 0b100
     static let border: UInt32 = 0b1000
+    static let powerUpSlow: UInt32 = 0b10000
+    static let powerUpSpeed: UInt32 = 0b100000
 }
+
+enum PowerUpType {
+    case slow
+    case speed
+}
+
+class PowerUp: SKShapeNode {
+    let type: PowerUpType
+    let duration: TimeInterval
+    var activationTime: TimeInterval? = nil
+
+    init(type: PowerUpType, cellSize: CGFloat, position: CGPoint, duration: TimeInterval = 5.0) {
+        self.type = type
+        self.duration = duration
+        super.init()
+        
+        let radius = cellSize / 2
+        self.path = CGPath(ellipseIn: CGRect(x: -radius, y: -radius, width: cellSize, height: cellSize), transform: nil)
+        self.position = position
+        self.fillColor = type == .slow ? .blue : .yellow
+        
+        self.physicsBody = SKPhysicsBody(circleOfRadius: radius)
+        self.physicsBody?.isDynamic = false
+        self.physicsBody?.categoryBitMask = (type == .slow) ? Categoria.powerUpSlow : Categoria.powerUpSpeed
+        self.physicsBody?.contactTestBitMask = Categoria.snakeHead
+        self.physicsBody?.collisionBitMask = Categoria.none
+    }
+
+    required init?(coder aDecoder: NSCoder) {
+        fatalError("init(coder:) has not been implemented")
+    }
+
+    func applyEffect(to scene: GameScene, currentTime: TimeInterval) {
+        activationTime = currentTime
+        switch type {
+        case .slow:
+            scene.applySlowDown()
+        case .speed:
+            scene.applySpeedUp()
+        }
+        scene.currentlyActivePowerUp = self
+    }
+}
+
 
 class GameScene: SKScene, SKPhysicsContactDelegate {
     
@@ -19,6 +65,13 @@ class GameScene: SKScene, SKPhysicsContactDelegate {
     var food: SKShapeNode?
     var score: Int = 0
     let scoreLabel = SKLabelNode()
+    
+    var lastPowerUpSpawnTime: TimeInterval = 0
+    var powerUpSpawnInterval: TimeInterval = 10
+    var currentlyActivePowerUp: PowerUp? = nil
+    var currentFrameTime: TimeInterval = 0
+    
+    var powerUp: SKShapeNode?
     
     var playAreaFrame: CGRect = .zero
     let cellSize: CGFloat = 20
@@ -114,7 +167,7 @@ class GameScene: SKScene, SKPhysicsContactDelegate {
         head.physicsBody = SKPhysicsBody(rectangleOf: CGSize(width: cellSize, height: cellSize))
         head.physicsBody?.isDynamic = true
         head.physicsBody?.categoryBitMask = Categoria.snakeHead
-        head.physicsBody?.contactTestBitMask = Categoria.food | Categoria.snakeBody | Categoria.border
+        head.physicsBody?.contactTestBitMask = Categoria.food | Categoria.snakeBody | Categoria.border | Categoria.powerUpSlow | Categoria.powerUpSpeed
         head.physicsBody?.collisionBitMask = Categoria.none
         head.physicsBody?.usesPreciseCollisionDetection = true
 
@@ -127,17 +180,9 @@ class GameScene: SKScene, SKPhysicsContactDelegate {
     func spawnFood() {
         food?.removeFromParent()
         
-        let columns = Int(playAreaFrame.width / cellSize)
-        let rows = Int(playAreaFrame.height / cellSize)
-        
-        let randomColumn = Int.random(in: 0..<columns)
-        let randomRow = Int.random(in: 0..<rows)
-
-        let position = gridPosition(column: randomColumn, row: randomRow)
-        
         let node = SKShapeNode(rectOf: CGSize(width: cellSize, height: cellSize))
         node.fillColor = .red
-        node.position = position
+        node.position = randomGridPosition()
         
         node.physicsBody = SKPhysicsBody(rectangleOf: CGSize(width: cellSize - 1, height: cellSize - 1))
         node.physicsBody?.isDynamic = false
@@ -149,6 +194,28 @@ class GameScene: SKScene, SKPhysicsContactDelegate {
         food = node
     }
     
+    func spawnPowerUp() {
+        powerUp?.removeFromParent()
+
+        let isSlow = Bool.random()
+        let type: PowerUpType = isSlow ? .slow : .speed
+        let position = randomGridPosition()
+        
+        let newPowerUp = PowerUp(type: type, cellSize: cellSize - 1, position: position, duration: 5.0)
+        addChild(newPowerUp)
+        powerUp = newPowerUp
+    }
+
+    func randomGridPosition() -> CGPoint {
+        let columns = Int(playAreaFrame.width / cellSize)
+        let rows = Int(playAreaFrame.height / cellSize)
+        
+        let randomColumn = Int.random(in: 0..<columns)
+        let randomRow = Int.random(in: 0..<rows)
+        
+        return gridPosition(column: randomColumn, row: randomRow)
+    }
+
     func growSnake() {
         guard let last = snake.last else { return }
         let newPart = SKShapeNode(rectOf: CGSize(width: cellSize, height: cellSize))
@@ -192,18 +259,49 @@ class GameScene: SKScene, SKPhysicsContactDelegate {
             case Categoria.snakeBody, Categoria.border:
                 gameOver()
 
+            case Categoria.powerUpSlow, Categoria.powerUpSpeed:
+                if let power = secondBody.node as? PowerUp {
+                    power.applyEffect(to: self, currentTime: currentFrameTime)
+                    power.removeFromParent()
+                    powerUp = nil
+                }
+
             default:
                 break
             }
         }
     }
     
+    func removePowerUpEffect(type: PowerUpType) {
+        switch type {
+        case .slow, .speed:
+            moveInterval = 0.2  // Reset to default
+        }
+    }
+    
     override func update(_ currentTime: TimeInterval) {
+        currentFrameTime = currentTime
+
         if currentTime - lastMoveTime > moveInterval {
             moveSnake()
             lastMoveTime = currentTime
         }
+
+        // Spawn a new power-up only if none is on the field
+        if powerUp == nil && (currentTime - lastPowerUpSpawnTime) >= powerUpSpawnInterval {
+            spawnPowerUp()
+            lastPowerUpSpawnTime = currentTime
+        }
+
+        // Check if active power-up effect should expire
+        if let activePower = currentlyActivePowerUp,
+           let start = activePower.activationTime,
+           currentTime - start >= activePower.duration {
+            removePowerUpEffect(type: activePower.type)
+            currentlyActivePowerUp = nil
+        }
     }
+
     
     func moveSnake() {
         guard let head = snake.first else { return }
@@ -245,7 +343,7 @@ class GameScene: SKScene, SKPhysicsContactDelegate {
             }
         }
     }
-    
+
     func createDirectionButtons() {
         let buttonSize = CGSize(width: 50, height: 50)
         let padding: CGFloat = 10
@@ -289,10 +387,19 @@ class GameScene: SKScene, SKPhysicsContactDelegate {
         }
     }
 
+    func applySlowDown() {
+        moveInterval *= 1.5  // Increase the interval to slow down the snake
+        lastMoveTime = 0     // Reset the last move time to reflect the change
+    }
+
+    func applySpeedUp() {
+        moveInterval *= 0.8  // Decrease the interval to speed up the snake
+        lastMoveTime = 0     // Reset the last move time to reflect the change
+    }
+
     func gameOver() {
         let gameOverScene = GameOverScene(size: self.size, score: self.score)
         gameOverScene.scaleMode = .aspectFill
         self.view?.presentScene(gameOverScene, transition: .flipVertical(withDuration: 1.0))
     }
 }
-
