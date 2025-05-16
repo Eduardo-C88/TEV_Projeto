@@ -29,7 +29,6 @@ class GameScene: SKScene, SKPhysicsContactDelegate {
         physicsWorld.gravity = .zero
         physicsWorld.contactDelegate = self
         
-        // 🔲 Square play area using full screen width, centered vertically
         let side = floor(size.width / cellSize) * cellSize
         let originX = (size.width - side) / 2
         let originY = (size.height - side) / 2
@@ -52,11 +51,11 @@ class GameScene: SKScene, SKPhysicsContactDelegate {
     }
     
     func createBorder(frame: CGRect) {
-        let border = SKShapeNode(rect: frame.insetBy(dx: -2, dy: -2))
+        let border = SKShapeNode(rect: frame.insetBy(dx: -5, dy: -4))
         border.strokeColor = .white
         border.lineWidth = 4
         
-        border.physicsBody = SKPhysicsBody(edgeLoopFrom: frame)
+        border.physicsBody = SKPhysicsBody(edgeLoopFrom: frame.insetBy(dx: -8, dy: -8))
         border.physicsBody?.categoryBitMask = Categoria.border
         border.physicsBody?.contactTestBitMask = Categoria.snakeHead
         border.physicsBody?.collisionBitMask = Categoria.none
