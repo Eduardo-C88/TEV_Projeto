@@ -10,11 +10,14 @@ struct Categoria {
     static let border: UInt32 = 0b1000
     static let powerUpSlow: UInt32 = 0b10000
     static let powerUpSpeed: UInt32 = 0b100000
+    static let powerUpReverse: UInt32 = 0b1000000
+    static let obstacle: UInt32 = 0b10000000
 }
 
 enum PowerUpType {
     case slow
     case speed
+    case reverse
 }
 
 class PowerUp: SKShapeNode {
@@ -22,7 +25,7 @@ class PowerUp: SKShapeNode {
     let duration: TimeInterval
     var activationTime: TimeInterval? = nil
 
-    init(type: PowerUpType, cellSize: CGFloat, position: CGPoint, duration: TimeInterval = 5.0) {
+    init(type: PowerUpType, cellSize: CGFloat, position: CGPoint, duration: TimeInterval = 4.0) {
         self.type = type
         self.duration = duration
         super.init()
@@ -30,11 +33,26 @@ class PowerUp: SKShapeNode {
         let radius = cellSize / 2
         self.path = CGPath(ellipseIn: CGRect(x: -radius, y: -radius, width: cellSize, height: cellSize), transform: nil)
         self.position = position
-        self.fillColor = type == .slow ? .blue : .yellow
+        self.fillColor = {
+            switch type {
+            case .slow:
+                return .blue
+            case .speed:
+                return .yellow
+            case .reverse:
+                return .purple  // Or any color you like for reverse
+            }
+        }()
         
         self.physicsBody = SKPhysicsBody(circleOfRadius: radius)
         self.physicsBody?.isDynamic = false
-        self.physicsBody?.categoryBitMask = (type == .slow) ? Categoria.powerUpSlow : Categoria.powerUpSpeed
+        self.physicsBody?.categoryBitMask = {
+            switch type {
+            case .slow: return Categoria.powerUpSlow
+            case .speed: return Categoria.powerUpSpeed
+            case .reverse: return Categoria.powerUpReverse
+            }
+        }()
         self.physicsBody?.contactTestBitMask = Categoria.snakeHead
         self.physicsBody?.collisionBitMask = Categoria.none
     }
@@ -44,12 +62,15 @@ class PowerUp: SKShapeNode {
     }
 
     func applyEffect(to scene: GameScene, currentTime: TimeInterval) {
+        scene.showPowerUpTimer(duration: self.duration)
         activationTime = currentTime
         switch type {
         case .slow:
             scene.applySlowDown()
         case .speed:
             scene.applySpeedUp()
+        case.reverse:
+            scene.applyReverseControls()
         }
         scene.currentlyActivePowerUp = self
     }
@@ -75,8 +96,18 @@ class GameScene: SKScene, SKPhysicsContactDelegate {
     
     var playAreaFrame: CGRect = .zero
     let cellSize: CGFloat = 20
+    
+    var isControlsReversed = false
+    var powerUpTimerBar: SKShapeNode?
+    
+    var obstacleSpawnInterval: TimeInterval = 8
+    var lastObstacleSpawnTime: TimeInterval = 0
+    var temporaryObstacles: [SKShapeNode] = []
+    let obstacleDuration: TimeInterval = 6
 
     override func didMove(to view: SKView) {
+        super.didMove(to: view)
+        
         backgroundColor = .black
         
         physicsWorld.gravity = .zero
@@ -93,11 +124,99 @@ class GameScene: SKScene, SKPhysicsContactDelegate {
         createSnake()
         spawnFood()
         createDirectionButtons()
+        
+        let directions: [UISwipeGestureRecognizer.Direction] = [.up, .down, .left, .right]
+        for dir in directions {
+            let swipe = UISwipeGestureRecognizer(target: self, action: #selector(handleSwipe(_:)))
+            swipe.direction = dir
+            view.addGestureRecognizer(swipe)
+        }
+    }
+    
+    func showPowerUpTimer(duration: TimeInterval) {
+        powerUpTimerBar?.removeFromParent()
+
+        let barWidth = size.width * 0.6
+        let barHeight: CGFloat = 10
+        let bar = SKShapeNode(rectOf: CGSize(width: barWidth, height: barHeight), cornerRadius: 5)
+        bar.position = CGPoint(x: size.width / 2, y: size.height - 150)
+        bar.fillColor = .white
+        bar.strokeColor = .clear
+        bar.zPosition = 1000
+        addChild(bar)
+        powerUpTimerBar = bar
+
+        // Reset scale first
+        bar.setScale(1.0)
+
+        // Create shrink animation via xScale
+        let shrink = SKAction.scaleX(to: 0.0, duration: duration)
+        let remove = SKAction.removeFromParent()
+        let sequence = SKAction.sequence([shrink, remove])
+        bar.run(sequence)
+    }
+    
+    @objc func handleSwipe(_ gesture: UISwipeGestureRecognizer) {
+        let multiplier: CGFloat = isControlsReversed ? -1 : 1
+
+        switch gesture.direction {
+        case .up:
+            if direction.dy == 0 {
+                direction = CGVector(dx: 0, dy: cellSize * multiplier)
+            }
+        case .down:
+            if direction.dy == 0 {
+                direction = CGVector(dx: 0, dy: -cellSize * multiplier)
+            }
+        case .left:
+            if direction.dx == 0 {
+                direction = CGVector(dx: -cellSize * multiplier, dy: 0)
+            }
+        case .right:
+            if direction.dx == 0 {
+                direction = CGVector(dx: cellSize * multiplier, dy: 0)
+            }
+        default:
+            break
+        }
+    }
+    
+    func spawnTemporaryObstacle() {
+        let numberOfObstacles = Int.random(in: 3...8)
+
+        for _ in 0..<numberOfObstacles {
+            let obstacleSize = CGSize(width: cellSize, height: cellSize)
+            let position = randomGridPosition()
+
+            let obstacle = SKShapeNode(rectOf: obstacleSize)
+            obstacle.fillColor = .brown
+            obstacle.position = position
+            obstacle.zPosition = 1
+
+            obstacle.physicsBody = SKPhysicsBody(rectangleOf: CGSize(width: cellSize - 1, height: cellSize - 1))
+            obstacle.physicsBody?.isDynamic = false
+            obstacle.physicsBody?.categoryBitMask = Categoria.obstacle
+            obstacle.physicsBody?.contactTestBitMask = Categoria.snakeHead
+            obstacle.physicsBody?.collisionBitMask = Categoria.none
+
+            addChild(obstacle)
+            temporaryObstacles.append(obstacle)
+
+            // Remove after a delay
+            let remove = SKAction.sequence([
+                SKAction.wait(forDuration: obstacleDuration),
+                SKAction.removeFromParent(),
+                SKAction.run { [weak self] in
+                    self?.temporaryObstacles.removeAll { $0 == obstacle }
+                }
+            ])
+            obstacle.run(remove)
+        }
     }
     
     func addScore() {
         scoreLabel.text = "Score: \(score)"
-        scoreLabel.position = CGPoint(x: size.width / 2, y: size.height - 60)
+        scoreLabel.position = CGPoint(x: size.width / 2, y: size.height - 100)
         scoreLabel.fontColor = .green
         scoreLabel.fontSize = 24
         addChild(scoreLabel)
@@ -197,8 +316,8 @@ class GameScene: SKScene, SKPhysicsContactDelegate {
     func spawnPowerUp() {
         powerUp?.removeFromParent()
 
-        let isSlow = Bool.random()
-        let type: PowerUpType = isSlow ? .slow : .speed
+        let typeRoll = Int.random(in: 0...2)
+        let type: PowerUpType = typeRoll == 0 ? .slow : (typeRoll == 1 ? .speed : .reverse)
         let position = randomGridPosition()
         
         let newPowerUp = PowerUp(type: type, cellSize: cellSize - 1, position: position, duration: 5.0)
@@ -256,16 +375,15 @@ class GameScene: SKScene, SKPhysicsContactDelegate {
                 spawnFood()
                 growSnake()
 
-            case Categoria.snakeBody, Categoria.border:
+            case Categoria.snakeBody, Categoria.border, Categoria.obstacle:
                 gameOver()
 
-            case Categoria.powerUpSlow, Categoria.powerUpSpeed:
+            case Categoria.powerUpSlow, Categoria.powerUpSpeed, Categoria.powerUpReverse:
                 if let power = secondBody.node as? PowerUp {
                     power.applyEffect(to: self, currentTime: currentFrameTime)
                     power.removeFromParent()
                     powerUp = nil
                 }
-
             default:
                 break
             }
@@ -276,7 +394,10 @@ class GameScene: SKScene, SKPhysicsContactDelegate {
         switch type {
         case .slow, .speed:
             moveInterval = 0.2  // Reset to default
+        case .reverse:
+            isControlsReversed = false
         }
+        powerUpTimerBar = nil
     }
     
     override func update(_ currentTime: TimeInterval) {
@@ -300,6 +421,11 @@ class GameScene: SKScene, SKPhysicsContactDelegate {
             removePowerUpEffect(type: activePower.type)
             currentlyActivePowerUp = nil
         }
+        
+        if currentTime - lastObstacleSpawnTime >= obstacleSpawnInterval {
+            spawnTemporaryObstacle()
+            lastObstacleSpawnTime = currentTime
+        }
     }
 
     
@@ -320,22 +446,24 @@ class GameScene: SKScene, SKPhysicsContactDelegate {
         
         for node in nodesAtPoint {
             if let name = node.name {
+                let multiplier: CGFloat = isControlsReversed ? -1 : 1
+
                 switch name {
                 case "up":
                     if direction.dy == 0 {
-                        direction = CGVector(dx: 0, dy: cellSize)
+                        direction = CGVector(dx: 0, dy: cellSize * multiplier)
                     }
                 case "down":
                     if direction.dy == 0 {
-                        direction = CGVector(dx: 0, dy: -cellSize)
+                        direction = CGVector(dx: 0, dy: -cellSize * multiplier)
                     }
                 case "left":
                     if direction.dx == 0 {
-                        direction = CGVector(dx: -cellSize, dy: 0)
+                        direction = CGVector(dx: -cellSize * multiplier, dy: 0)
                     }
                 case "right":
                     if direction.dx == 0 {
-                        direction = CGVector(dx: cellSize, dy: 0)
+                        direction = CGVector(dx: cellSize * multiplier, dy: 0)
                     }
                 default:
                     break
@@ -389,12 +517,17 @@ class GameScene: SKScene, SKPhysicsContactDelegate {
 
     func applySlowDown() {
         moveInterval *= 1.5  // Increase the interval to slow down the snake
-        lastMoveTime = 0     // Reset the last move time to reflect the change
+        lastMoveTime = currentFrameTime    // Reset the last move time to reflect the change
     }
 
     func applySpeedUp() {
         moveInterval *= 0.8  // Decrease the interval to speed up the snake
-        lastMoveTime = 0     // Reset the last move time to reflect the change
+        lastMoveTime = currentFrameTime    // Reset the last move time to reflect the change
+    }
+    
+    func applyReverseControls() {
+        isControlsReversed = true
+        lastMoveTime = currentFrameTime
     }
 
     func gameOver() {
