@@ -188,29 +188,50 @@ class GameScene: SKScene, SKPhysicsContactDelegate {
             let obstacleSize = CGSize(width: cellSize, height: cellSize)
             let position = randomGridPosition()
 
-            let obstacle = SKShapeNode(rectOf: obstacleSize)
-            obstacle.fillColor = .brown
-            obstacle.position = position
-            obstacle.zPosition = 1
+            // Add a warning indicator (e.g., blinking red square)
+            let warningNode = SKShapeNode(rectOf: obstacleSize)
+            warningNode.fillColor = .red
+            warningNode.alpha = 0.5
+            warningNode.position = position
+            warningNode.zPosition = 0.5
 
-            obstacle.physicsBody = SKPhysicsBody(rectangleOf: CGSize(width: cellSize - 1, height: cellSize - 1))
-            obstacle.physicsBody?.isDynamic = false
-            obstacle.physicsBody?.categoryBitMask = Categoria.obstacle
-            obstacle.physicsBody?.contactTestBitMask = Categoria.snakeHead
-            obstacle.physicsBody?.collisionBitMask = Categoria.none
+            addChild(warningNode)
 
-            addChild(obstacle)
-            temporaryObstacles.append(obstacle)
-
-            // Remove after a delay
-            let remove = SKAction.sequence([
-                SKAction.wait(forDuration: obstacleDuration),
-                SKAction.removeFromParent(),
-                SKAction.run { [weak self] in
-                    self?.temporaryObstacles.removeAll { $0 == obstacle }
-                }
+            let blink = SKAction.sequence([
+                SKAction.fadeAlpha(to: 0.2, duration: 0.3),
+                SKAction.fadeAlpha(to: 0.5, duration: 0.3)
             ])
-            obstacle.run(remove)
+            let blinkRepeat = SKAction.repeat(blink, count: 3)
+
+            let spawnObstacle = SKAction.run { [weak self] in
+                guard let self = self else { return }
+
+                warningNode.removeFromParent()
+
+                let obstacle = SKShapeNode(rectOf: obstacleSize)
+                obstacle.fillColor = .brown
+                obstacle.position = position
+                obstacle.zPosition = 1
+
+                obstacle.physicsBody = SKPhysicsBody(rectangleOf: CGSize(width: self.cellSize - 1, height: self.cellSize - 1))
+                obstacle.physicsBody?.isDynamic = false
+                obstacle.physicsBody?.categoryBitMask = Categoria.obstacle
+                obstacle.physicsBody?.contactTestBitMask = Categoria.snakeHead
+                obstacle.physicsBody?.collisionBitMask = Categoria.none
+
+                self.addChild(obstacle)
+                self.temporaryObstacles.append(obstacle)
+
+                let remove = SKAction.sequence([
+                    SKAction.wait(forDuration: self.obstacleDuration),
+                    SKAction.removeFromParent(),
+                    SKAction.run {
+                        self.temporaryObstacles.removeAll { $0 == obstacle }
+                    }
+                ])
+                obstacle.run(remove)
+            }
+            warningNode.run(SKAction.sequence([blinkRepeat, spawnObstacle]))
         }
     }
     
