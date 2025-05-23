@@ -30,19 +30,28 @@ class PowerUp: SKShapeNode {
         self.duration = duration
         super.init()
         
-        let radius = cellSize / 2
-        self.path = CGPath(ellipseIn: CGRect(x: -radius, y: -radius, width: cellSize, height: cellSize), transform: nil)
         self.position = position
-        self.fillColor = {
-            switch type {
-            case .slow:
-                return .blue
-            case .speed:
-                return .yellow
-            case .reverse:
-                return .purple  // Or any color you like for reverse
-            }
-        }()
+        
+        let radius = cellSize / 2
+        switch type {
+        case .slow:
+            self.path = CGPath(ellipseIn: CGRect(x: -radius, y: -radius, width: cellSize, height: cellSize), transform: nil)
+            self.fillColor = .blue
+            
+        case .speed:
+            let path = CGMutablePath()
+            path.move(to: CGPoint(x: 0, y: radius))
+            path.addLine(to: CGPoint(x: -radius, y: -radius))
+            path.addLine(to: CGPoint(x: radius, y: -radius))
+            path.closeSubpath()
+            self.path = path
+            self.fillColor = .yellow
+            
+        case .reverse:
+            let size = CGSize(width: cellSize, height: cellSize)
+            self.path = CGPath(rect: CGRect(origin: CGPoint(x: -size.width/2, y: -size.height/2), size: size), transform: nil)
+            self.fillColor = .purple
+        }
         
         self.physicsBody = SKPhysicsBody(circleOfRadius: radius)
         self.physicsBody?.isDynamic = false
@@ -62,6 +71,7 @@ class PowerUp: SKShapeNode {
     }
 
     func applyEffect(to scene: GameScene, currentTime: TimeInterval) {
+        scene.powerUpActive = true
         scene.showPowerUpTimer(duration: self.duration)
         activationTime = currentTime
         switch type {
@@ -97,6 +107,7 @@ class GameScene: SKScene, SKPhysicsContactDelegate {
     var playAreaFrame: CGRect = .zero
     let cellSize: CGFloat = 20
     
+    var powerUpActive = false
     var isControlsReversed = false
     var powerUpTimerBar: SKShapeNode?
     
@@ -181,20 +192,64 @@ class GameScene: SKScene, SKPhysicsContactDelegate {
         }
     }
     
+    func occupiedGridPositions() -> Set<NSValue> {
+        var positions = Set<NSValue>()
+
+        if let foodPosition = food?.position {
+            positions.insert(NSValue(cgPoint: foodPosition))
+        }
+
+        if let powerUpPosition = powerUp?.position {
+            positions.insert(NSValue(cgPoint: powerUpPosition))
+        }
+
+        for segment in snake {
+            positions.insert(NSValue(cgPoint: segment.position))
+        }
+
+        for obstacle in temporaryObstacles {
+            positions.insert(NSValue(cgPoint: obstacle.position))
+        }
+
+        return positions
+    }
+    
+    func randomGridPositionAvoiding(_ positionsToAvoid: Set<NSValue>) -> CGPoint? {
+        let columns = Int(playAreaFrame.width / cellSize)
+        let rows = Int(playAreaFrame.height / cellSize)
+        var availablePositions: [CGPoint] = []
+
+        for col in 0..<columns {
+            for row in 0..<rows {
+                let pos = gridPosition(column: col, row: row)
+                if !positionsToAvoid.contains(NSValue(cgPoint: pos)) {
+                    availablePositions.append(pos)
+                }
+            }
+        }
+
+        return availablePositions.randomElement()
+    }
+    
+    func spawnNodeAvoidingOccupied(createNode: (CGPoint) -> SKNode?) -> SKNode? {
+        let occupied = occupiedGridPositions()
+        guard let position = randomGridPositionAvoiding(occupied) else { return nil }
+        return createNode(position)
+    }
+    
     func spawnTemporaryObstacle() {
         let numberOfObstacles = Int.random(in: 3...8)
 
         for _ in 0..<numberOfObstacles {
-            let obstacleSize = CGSize(width: cellSize, height: cellSize)
-            let position = randomGridPosition()
+            guard let position = randomGridPositionAvoiding(occupiedGridPositions()) else { continue }
 
-            // Add a warning indicator (e.g., blinking red square)
+            let obstacleSize = CGSize(width: cellSize, height: cellSize)
+
             let warningNode = SKShapeNode(rectOf: obstacleSize)
             warningNode.fillColor = .red
             warningNode.alpha = 0.5
             warningNode.position = position
             warningNode.zPosition = 0.5
-
             addChild(warningNode)
 
             let blink = SKAction.sequence([
@@ -320,30 +375,36 @@ class GameScene: SKScene, SKPhysicsContactDelegate {
     func spawnFood() {
         food?.removeFromParent()
         
-        let node = SKShapeNode(rectOf: CGSize(width: cellSize, height: cellSize))
-        node.fillColor = .red
-        node.position = randomGridPosition()
-        
-        node.physicsBody = SKPhysicsBody(rectangleOf: CGSize(width: cellSize - 1, height: cellSize - 1))
-        node.physicsBody?.isDynamic = false
-        node.physicsBody?.categoryBitMask = Categoria.food
-        node.physicsBody?.contactTestBitMask = Categoria.snakeHead
-        node.physicsBody?.collisionBitMask = Categoria.none
-        
-        addChild(node)
-        food = node
+        if let node = spawnNodeAvoidingOccupied(createNode: { position in
+            let node = SKShapeNode(rectOf: CGSize(width: cellSize, height: cellSize))
+            node.fillColor = .red
+            node.position = position
+            node.physicsBody = SKPhysicsBody(rectangleOf: CGSize(width: cellSize - 1, height: cellSize - 1))
+            node.physicsBody?.isDynamic = false
+            node.physicsBody?.categoryBitMask = Categoria.food
+            node.physicsBody?.contactTestBitMask = Categoria.snakeHead
+            node.physicsBody?.collisionBitMask = Categoria.none
+            return node
+        }) as? SKShapeNode{
+            addChild(node)
+            food = node
+        }
     }
     
     func spawnPowerUp() {
-        powerUp?.removeFromParent()
+        if powerUpActive == false {
+            powerUp?.removeFromParent()
 
-        let typeRoll = Int.random(in: 0...2)
-        let type: PowerUpType = typeRoll == 0 ? .slow : (typeRoll == 1 ? .speed : .reverse)
-        let position = randomGridPosition()
-        
-        let newPowerUp = PowerUp(type: type, cellSize: cellSize - 1, position: position, duration: 5.0)
-        addChild(newPowerUp)
-        powerUp = newPowerUp
+            let typeRoll = Int.random(in: 0...2)
+            let type: PowerUpType = typeRoll == 0 ? .slow : (typeRoll == 1 ? .speed : .reverse)
+
+            if let newPowerUp = spawnNodeAvoidingOccupied(createNode: { position in
+                return PowerUp(type: type, cellSize: cellSize - 1, position: position, duration: 5.0)
+            }) as? PowerUp {
+                addChild(newPowerUp)
+                powerUp = newPowerUp
+            }
+        }
     }
 
     func randomGridPosition() -> CGPoint {
@@ -412,6 +473,7 @@ class GameScene: SKScene, SKPhysicsContactDelegate {
     }
     
     func removePowerUpEffect(type: PowerUpType) {
+        powerUpActive = false
         switch type {
         case .slow, .speed:
             moveInterval = 0.2  // Reset to default
@@ -552,8 +614,9 @@ class GameScene: SKScene, SKPhysicsContactDelegate {
     }
 
     func gameOver() {
-        let gameOverScene = GameOverScene(size: self.size, score: self.score)
-        gameOverScene.scaleMode = .aspectFill
-        self.view?.presentScene(gameOverScene, transition: .flipVertical(withDuration: 1.0))
+        let gameOverScene = GameOverScene(size: size, score: score)
+        gameOverScene.scaleMode = scaleMode
+        let transition = SKTransition.fade(withDuration: 1.0)
+        view?.presentScene(gameOverScene, transition: transition)
     }
 }

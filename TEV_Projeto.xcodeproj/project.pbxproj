@@ -15,6 +15,7 @@
 		69BFFF202DCDF73700C26224 /* LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 69BFFF1E2DCDF73700C26224 /* LaunchScreen.storyboard */; };
 		69BFFF272DCDFBAD00C26224 /* CGPointExtensions.swift in Sources */ = {isa = PBXBuildFile; fileRef = 69BFFF262DCDFBAD00C26224 /* CGPointExtensions.swift */; };
 		69C7372B2DD5E754001719BB /* GameOverScene.swift in Sources */ = {isa = PBXBuildFile; fileRef = 69C7372A2DD5E754001719BB /* GameOverScene.swift */; };
+		69CD308D2DE077CB00C4E7C7 /* StartScene.swift in Sources */ = {isa = PBXBuildFile; fileRef = 69CD308C2DE077CB00C4E7C7 /* StartScene.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -27,6 +28,7 @@
 		69BFFF1F2DCDF73700C26224 /* Base */ = {isa = PBXFileReference; lastKnownFileType = file.storyboard; name = Base; path = Base.lproj/LaunchScreen.storyboard; sourceTree = "<group>"; };
 		69BFFF262DCDFBAD00C26224 /* CGPointExtensions.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CGPointExtensions.swift; sourceTree = "<group>"; };
 		69C7372A2DD5E754001719BB /* GameOverScene.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GameOverScene.swift; sourceTree = "<group>"; };
+		69CD308C2DE077CB00C4E7C7 /* StartScene.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StartScene.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -67,6 +69,7 @@
 				69BFFF1E2DCDF73700C26224 /* LaunchScreen.storyboard */,
 				69BFFF262DCDFBAD00C26224 /* CGPointExtensions.swift */,
 				69C7372A2DD5E754001719BB /* GameOverScene.swift */,
+				69CD308C2DE077CB00C4E7C7 /* StartScene.swift */,
 			);
 			path = TEV_Projeto;
 			sourceTree = "<group>";
@@ -143,6 +146,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				69C7372B2DD5E754001719BB /* GameOverScene.swift in Sources */,
+				69CD308D2DE077CB00C4E7C7 /* StartScene.swift in Sources */,
 				69BFFF162DCDF73600C26224 /* GameScene.swift in Sources */,
 				69BFFF182DCDF73600C26224 /* GameViewController.swift in Sources */,
 				69BFFF272DCDFBAD00C26224 /* CGPointExtensions.swift in Sources */,
