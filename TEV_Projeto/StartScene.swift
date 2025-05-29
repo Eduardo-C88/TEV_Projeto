@@ -5,6 +5,8 @@ class StartScene: SKScene {
 
     override func didMove(to view: SKView) {
         backgroundColor = .black
+        
+        run(SKAction.playSoundFileNamed("Background", waitForCompletion: false))
 
         let titleLabel = SKLabelNode(text: "Snake Game")
         titleLabel.fontName = "AvenirNext-Bold"

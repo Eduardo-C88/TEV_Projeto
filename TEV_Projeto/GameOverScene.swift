@@ -16,6 +16,7 @@ class GameOverScene: SKScene {
 
     override func didMove(to view: SKView) {
         backgroundColor = .black
+        //run(SKAction.playSoundFileNamed("Background", waitForCompletion: false))
         
         let message = "Game Over"
         let label = SKLabelNode(text: message)

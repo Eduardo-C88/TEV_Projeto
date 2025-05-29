@@ -76,10 +76,13 @@ class PowerUp: SKShapeNode {
         activationTime = currentTime
         switch type {
         case .slow:
+            run(SKAction.playSoundFileNamed("Slow", waitForCompletion: false))
             scene.applySlowDown()
         case .speed:
+            run(SKAction.playSoundFileNamed("Speed", waitForCompletion: false))
             scene.applySpeedUp()
         case.reverse:
+            run(SKAction.playSoundFileNamed("Invert", waitForCompletion: false))
             scene.applyReverseControls()
         }
         scene.currentlyActivePowerUp = self
@@ -118,6 +121,7 @@ class GameScene: SKScene, SKPhysicsContactDelegate {
 
     override func didMove(to view: SKView) {
         super.didMove(to: view)
+        //run(SKAction.playSoundFileNamed("Background", waitForCompletion: false))
         
         backgroundColor = .black
         
@@ -452,6 +456,7 @@ class GameScene: SKScene, SKPhysicsContactDelegate {
         if firstBody.categoryBitMask == Categoria.snakeHead {
             switch secondBody.categoryBitMask {
             case Categoria.food:
+                run(SKAction.playSoundFileNamed("Food", waitForCompletion: false))
                 score += 1
                 scoreLabel.text = "Score: \(score)"
                 spawnFood()
@@ -614,6 +619,7 @@ class GameScene: SKScene, SKPhysicsContactDelegate {
     }
 
     func gameOver() {
+        run(SKAction.playSoundFileNamed("Death", waitForCompletion: false))
         let gameOverScene = GameOverScene(size: size, score: score)
         gameOverScene.scaleMode = scaleMode
         let transition = SKTransition.fade(withDuration: 1.0)
