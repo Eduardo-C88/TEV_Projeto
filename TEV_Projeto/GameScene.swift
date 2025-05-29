@@ -463,6 +463,8 @@ class GameScene: SKScene, SKPhysicsContactDelegate {
                 growSnake()
 
             case Categoria.snakeBody, Categoria.border, Categoria.obstacle:
+                // Try SKSequence
+                //run(SKAction.playSoundFileNamed("Death", waitForCompletion: false))
                 gameOver()
 
             case Categoria.powerUpSlow, Categoria.powerUpSpeed, Categoria.powerUpReverse:
@@ -619,7 +621,7 @@ class GameScene: SKScene, SKPhysicsContactDelegate {
     }
 
     func gameOver() {
-        run(SKAction.playSoundFileNamed("Death", waitForCompletion: false))
+        //run(SKAction.playSoundFileNamed("Death", waitForCompletion: false))
         let gameOverScene = GameOverScene(size: size, score: score)
         gameOverScene.scaleMode = scaleMode
         let transition = SKTransition.fade(withDuration: 1.0)
