@@ -100,6 +100,9 @@ class GameScene: SKScene, SKPhysicsContactDelegate {
     var score: Int = 0
     let scoreLabel = SKLabelNode()
     
+    var highScore: Int = 0
+    let highScoreLabel = SKLabelNode()
+    
     var lastPowerUpSpawnTime: TimeInterval = 0
     var powerUpSpawnInterval: TimeInterval = 10
     var currentlyActivePowerUp: PowerUp? = nil
@@ -126,6 +129,8 @@ class GameScene: SKScene, SKPhysicsContactDelegate {
         addChild(bgMusic)
         
         backgroundColor = .black
+        
+        highScore = UserDefaults.standard.integer(forKey: "HighScore")
         
         physicsWorld.gravity = .zero
         physicsWorld.contactDelegate = self
@@ -156,7 +161,7 @@ class GameScene: SKScene, SKPhysicsContactDelegate {
         let barWidth = size.width * 0.6
         let barHeight: CGFloat = 10
         let bar = SKShapeNode(rectOf: CGSize(width: barWidth, height: barHeight), cornerRadius: 5)
-        bar.position = CGPoint(x: size.width / 2, y: size.height - 150)
+        bar.position = CGPoint(x: size.width / 2, y: size.height - 200)
         bar.fillColor = .white
         bar.strokeColor = .clear
         bar.zPosition = 1000
@@ -298,10 +303,18 @@ class GameScene: SKScene, SKPhysicsContactDelegate {
     
     func addScore() {
         scoreLabel.text = "Score: \(score)"
-        scoreLabel.position = CGPoint(x: size.width / 2, y: size.height - 100)
+        scoreLabel.fontName = "CourierNewPS-BoldMT"
+        scoreLabel.position = CGPoint(x: size.width / 2, y: size.height - 150)
         scoreLabel.fontColor = .green
         scoreLabel.fontSize = 24
         addChild(scoreLabel)
+        
+        highScoreLabel.text = "High Score: \(highScore)"
+        highScoreLabel.fontName = "CourierNewPS-BoldMT"
+        highScoreLabel.position = CGPoint(x: size.width / 2, y: size.height - 100)
+        highScoreLabel.fontColor = .purple
+        highScoreLabel.fontSize = 24
+        addChild(highScoreLabel)
     }
     
     func createBorder(frame: CGRect) {
@@ -444,6 +457,12 @@ class GameScene: SKScene, SKPhysicsContactDelegate {
     }
     
     func didBegin(_ contact: SKPhysicsContact) {
+        
+        if score > highScore {
+            highScore = score
+            UserDefaults.standard.set(highScore, forKey: "HighScore")
+        }
+        
         var firstBody: SKPhysicsBody
         var secondBody: SKPhysicsBody
 
