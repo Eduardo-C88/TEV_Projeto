@@ -14,6 +14,7 @@
 		69BFFF1D2DCDF73700C26224 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 69BFFF1C2DCDF73700C26224 /* Assets.xcassets */; };
 		69BFFF202DCDF73700C26224 /* LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 69BFFF1E2DCDF73700C26224 /* LaunchScreen.storyboard */; };
 		69BFFF272DCDFBAD00C26224 /* CGPointExtensions.swift in Sources */ = {isa = PBXBuildFile; fileRef = 69BFFF262DCDFBAD00C26224 /* CGPointExtensions.swift */; };
+		69C735922DE9A32B0054E067 /* GOBackground.mp3 in Resources */ = {isa = PBXBuildFile; fileRef = 69C735912DE9A32B0054E067 /* GOBackground.mp3 */; };
 		69C7372B2DD5E754001719BB /* GameOverScene.swift in Sources */ = {isa = PBXBuildFile; fileRef = 69C7372A2DD5E754001719BB /* GameOverScene.swift */; };
 		69C905452DE85A58005EAA8C /* Death.mp3 in Resources */ = {isa = PBXBuildFile; fileRef = 69C9053F2DE85A58005EAA8C /* Death.mp3 */; };
 		69C905462DE85A58005EAA8C /* Food.mp3 in Resources */ = {isa = PBXBuildFile; fileRef = 69C905402DE85A58005EAA8C /* Food.mp3 */; };
@@ -33,6 +34,7 @@
 		69BFFF1C2DCDF73700C26224 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		69BFFF1F2DCDF73700C26224 /* Base */ = {isa = PBXFileReference; lastKnownFileType = file.storyboard; name = Base; path = Base.lproj/LaunchScreen.storyboard; sourceTree = "<group>"; };
 		69BFFF262DCDFBAD00C26224 /* CGPointExtensions.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CGPointExtensions.swift; sourceTree = "<group>"; };
+		69C735912DE9A32B0054E067 /* GOBackground.mp3 */ = {isa = PBXFileReference; lastKnownFileType = audio.mp3; path = GOBackground.mp3; sourceTree = "<group>"; };
 		69C7372A2DD5E754001719BB /* GameOverScene.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GameOverScene.swift; sourceTree = "<group>"; };
 		69C9053F2DE85A58005EAA8C /* Death.mp3 */ = {isa = PBXFileReference; lastKnownFileType = audio.mp3; path = Death.mp3; sourceTree = "<group>"; };
 		69C905402DE85A58005EAA8C /* Food.mp3 */ = {isa = PBXFileReference; lastKnownFileType = audio.mp3; path = Food.mp3; sourceTree = "<group>"; };
@@ -90,6 +92,7 @@
 		69C905342DE8593D005EAA8C /* Audio */ = {
 			isa = PBXGroup;
 			children = (
+				69C735912DE9A32B0054E067 /* GOBackground.mp3 */,
 				69C905412DE85A58005EAA8C /* Background.mp3 */,
 				69C9053F2DE85A58005EAA8C /* Death.mp3 */,
 				69C905402DE85A58005EAA8C /* Food.mp3 */,
@@ -166,6 +169,7 @@
 				69C905462DE85A58005EAA8C /* Food.mp3 in Resources */,
 				69C905482DE85A58005EAA8C /* Invert.mp3 in Resources */,
 				69BFFF1D2DCDF73700C26224 /* Assets.xcassets in Resources */,
+				69C735922DE9A32B0054E067 /* GOBackground.mp3 in Resources */,
 				69BFFF202DCDF73700C26224 /* LaunchScreen.storyboard in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;

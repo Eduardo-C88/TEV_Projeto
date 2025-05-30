@@ -18,6 +18,10 @@ class GameOverScene: SKScene {
         backgroundColor = .black
         //run(SKAction.playSoundFileNamed("Background", waitForCompletion: false))
         
+        let bgMusic =  SKAudioNode(fileNamed: "GOBackground")
+        bgMusic.autoplayLooped = true
+        addChild(bgMusic)
+        
         let message = "Game Over"
         let label = SKLabelNode(text: message)
         label.fontName = "Arial-BoldMT"

@@ -121,7 +121,9 @@ class GameScene: SKScene, SKPhysicsContactDelegate {
 
     override func didMove(to view: SKView) {
         super.didMove(to: view)
-        //run(SKAction.playSoundFileNamed("Background", waitForCompletion: false))
+        let bgMusic =  SKAudioNode(fileNamed: "Background")
+        bgMusic.autoplayLooped = true
+        addChild(bgMusic)
         
         backgroundColor = .black
         
@@ -464,7 +466,7 @@ class GameScene: SKScene, SKPhysicsContactDelegate {
 
             case Categoria.snakeBody, Categoria.border, Categoria.obstacle:
                 // Try SKSequence
-                //run(SKAction.playSoundFileNamed("Death", waitForCompletion: false))
+                run(SKAction.playSoundFileNamed("Death", waitForCompletion: false))
                 gameOver()
 
             case Categoria.powerUpSlow, Categoria.powerUpSpeed, Categoria.powerUpReverse:
@@ -606,22 +608,25 @@ class GameScene: SKScene, SKPhysicsContactDelegate {
     }
 
     func applySlowDown() {
+        run(SKAction.playSoundFileNamed("Slow", waitForCompletion: true))
         moveInterval *= 1.5  // Increase the interval to slow down the snake
         lastMoveTime = currentFrameTime    // Reset the last move time to reflect the change
     }
 
     func applySpeedUp() {
+        run(SKAction.playSoundFileNamed("Speed", waitForCompletion: true))
         moveInterval *= 0.8  // Decrease the interval to speed up the snake
         lastMoveTime = currentFrameTime    // Reset the last move time to reflect the change
     }
     
     func applyReverseControls() {
+        run(SKAction.playSoundFileNamed("Invert", waitForCompletion: true))
         isControlsReversed = true
         lastMoveTime = currentFrameTime
     }
 
     func gameOver() {
-        //run(SKAction.playSoundFileNamed("Death", waitForCompletion: false))
+        run(SKAction.playSoundFileNamed("Death", waitForCompletion: true))
         let gameOverScene = GameOverScene(size: size, score: score)
         gameOverScene.scaleMode = scaleMode
         let transition = SKTransition.fade(withDuration: 1.0)
